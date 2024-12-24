@@ -34,7 +34,7 @@ fn draw_branch(pm: &mut Pixmap, start: Vec2, dir: Vec2, skew: &Rot2, angle: &Rot
 
 fn main() {
     let mut pm = Pixmap::new(800, 1200).unwrap();
-    pm.fill(Color::from_rgba8(100, 90, 120, 255));
+    pm.fill(Color::from_rgba8(140, 140, 150, 255));
     let (mut pos, mut growth) = (Vec2::new(400.0, 1100.0), Vec2::new(0.0, -100.0));
 
     // Every iteration grows one layer of branches from bottom to top.
@@ -49,7 +49,7 @@ fn main() {
         let dir = |sign| Rot2::new(sign * TAU / (4.0 - scale)) * growth * scale;
         let skew = |sign| Rot2::new(sign * TAU / 100.0);
         let angle = |sign| Rot2::new(sign * TAU / (3.0 + scale * 10.0));
-        if scale < 0.95 && scale > 0.15 {  // Do not draw branches to the top of the tree
+        if scale < 0.95 && scale > 0.15 {  // No branches on the bottom and the top
             draw_branch(&mut pm, pos, dir( 1.0) * 1.5, &skew( 1.0), &angle( 1.0), 15);
             draw_branch(&mut pm, pos, dir(-1.0) * 1.5, &skew(-1.0), &angle(-1.0), 15);
         }
@@ -58,3 +58,4 @@ fn main() {
     }
     pm.save_png("tree.png").unwrap();
 }
+
