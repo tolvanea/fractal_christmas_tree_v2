@@ -54,14 +54,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "christmas_triangle"
-version = "0.1.0"
-dependencies = [
- "nalgebra",
- "tiny-skia",
-]
-
-[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -87,6 +79,14 @@ checksum = "c936bfdafb507ebbf50b8074c54fa31c5be9a1e7e5f467dd659697041407d07c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
+]
+
+[[package]]
+name = "fractal_christmas_tree_v2"
+version = "0.1.0"
+dependencies = [
+ "nalgebra",
+ "tiny-skia",
 ]
 
 [[package]]
