@@ -1,5 +1,5 @@
 use std::f32::consts::TAU;
-use tiny_skia::{Paint, PathBuilder, Stroke, LineCap, Pixmap, Transform};
+use tiny_skia::{Paint, PathBuilder, Stroke, LineCap, Pixmap, Transform, Color};
 use nalgebra::{Vector2, Vector3, Rotation2};
 type Vec2 = Vector2<f32>;
 type Vec3 = Vector3<f32>;
@@ -33,7 +33,8 @@ fn draw_branch(pm: &mut Pixmap, start: Vec2, dir: Vec2, skew: &Rot2, angle: &Rot
 }
 
 fn main() {
-    let mut pm = Pixmap::new(800, 1400).unwrap();
+    let mut pm = Pixmap::new(800, 1200).unwrap();
+    pm.fill(Color::from_rgba8(100, 90, 120, 255));
     let (mut pos, mut growth) = (Vec2::new(400.0, 1100.0), Vec2::new(0.0, -100.0));
 
     // Every iteration grows one layer of branches from bottom to top.
