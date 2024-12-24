@@ -1,97 +1,60 @@
-use std::{cell::LazyCell, f32::consts::TAU};
-
+use std::f32::consts::TAU;
 use tiny_skia::{Paint, PathBuilder, Stroke, LineCap, Pixmap, Transform};
-use nalgebra::{Vector2 as Vec2, Rotation2};
+use nalgebra::{Vector2, Vector3, Rotation2};
+type Vec2 = Vector2<f32>;
+type Vec3 = Vector3<f32>;
+type Rot2 = Rotation2<f32>;
 
+fn paint_path(path: PathBuilder, pixmap: &mut Pixmap, scale: f32, width: f32) {
+    let color = Vec3::new(255.0, 255.0, 255.0).lerp(&Vec3::new(0.0, 102.0, 0.0), scale*scale);
+    let mut paint = Paint::default();
+    paint.set_color_rgba8(color.x as u8, color.y as u8, color.z as u8, 255);
+    let stroke = Stroke { width, line_cap: LineCap::Round, ..Stroke::default()};
+    pixmap.stroke_path(&path.finish().unwrap(), &paint, &stroke, Transform::identity(), None);
+}
 
-// Based on https://fiddle.skia.org/c/@compose_path
-
-// fn draw_star() {
-//     let mut paint = Paint::default();
-//     paint.set_color_rgba8(0, 127, 0, 200);
-//     paint.anti_alias = true;
-//
-//     let path = {
-//         let mut pb = PathBuilder::new();
-//         const RADIUS: f32 = 250.0;
-//         const CENTER: f32 = 250.0;
-//         pb.move_to(CENTER + RADIUS, CENTER);
-//         for i in 1..8 {
-//             let a = 2.6927937 * i as f32;
-//             pb.line_to(CENTER + RADIUS * a.cos(), CENTER + RADIUS * a.sin());
-//         }
-//         pb.finish().unwrap()
-//     };
-//
-//     let mut stroke = Stroke::default();
-//     stroke.width = 6.0;
-//     stroke.line_cap = LineCap::Round;
-//
-//     let mut pixmap = Pixmap::new(500, 500).unwrap();
-//     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-//     pixmap.save_png("star.png").unwrap();
-// }
-
-//const BRANCH_STEM: f32 = 0.2;  // space between branches
-
-
-fn draw_branch(
-    pb: &mut PathBuilder,
-    start: Vec2<f32>,
-    l: Vec2<f32>,
-    scew: &Rotation2<f32>,
-    angle: &Rotation2<f32>,
-    n: u32,
-) {
-    if n == 0 {
-        //let end = start + l;
-        //pb.line_to(end.x, end.y);
-    } else {
-        let stem = 0.5;
+fn draw_branch(pm: &mut Pixmap, start: Vec2, dir: Vec2, skew: &Rot2, angle: &Rot2, n: u32) {
+    if n > 0 {
         let scale = (n as f32) * 1.0/15.0;
-        let branch_scale: f32 = 0.6;
+        let new_dir = *skew * dir * scale;
 
-        // sub branch
-        let sub_branch_l = *scew * (*angle) * l * scale * branch_scale;
-        draw_branch(pb, start, sub_branch_l, scew, angle, n-1);
+        // Grow a sub branch from the current branch
+        let sub_branch_dir = *angle * new_dir * 0.6; // 0.6 is the scale of the sub branch
+        draw_branch(pm, start, sub_branch_dir, skew, angle, n-1);
 
-        // The rest of current branch
-        let new_start = l * stem + start;
-        let new_l = *scew * l * scale;
+        // Grow the current branch onwards
+        let new_start = dir * 0.5 + start; // 0.5 is the distance between sub branches
+        let mut pb = PathBuilder::new();
         pb.move_to(start.x, start.y);
         pb.line_to(new_start.x, new_start.y); // stem
-        draw_branch(pb, new_start, new_l, scew, angle, n-1);
+        draw_branch(pm, new_start, new_dir, skew, angle, n-1);
+
+        paint_path(pb, pm, scale, 3.0 / (1.0-scale + 0.2));
     }
 }
 
 fn main() {
-    let mut paint = Paint::default();
-    paint.set_color_rgba8(0, 127, 0, 200);
-    paint.anti_alias = true;
+    let mut pm = Pixmap::new(800, 1400).unwrap();
+    let (mut pos, mut growth) = (Vec2::new(400.0, 1100.0), Vec2::new(0.0, -100.0));
 
-    let path = {
+    // Every iteration grows one layer of branches from bottom to top.
+    for scale in (0..10).map(|i| 1.0 - 0.1 * i as f32) {
+        // Draw trunk
         let mut pb = PathBuilder::new();
-        let (mut pos, growth) = (Vec2::new(700.0, 1100.0), Vec2::new(0.0, -100.0));
-        for scale in (0..10).map(|i| 1.0 - 0.095 * i as f32) {
-            let branch_dir = |sign| Rotation2::new(sign * TAU / (4.0 - scale)) * growth * scale;
-            let skew = |sign| Rotation2::new(sign * TAU / 100.0);
-            let angle = |sign| Rotation2::new(sign * TAU/(5.0 + scale * 10.0));
+        pb.move_to(pos.x, pos.y);
+        pos = pos + growth;
+        pb.line_to(pos.x, pos.y);
 
-            draw_branch(&mut pb, pos, branch_dir(1.0) * 1.5, &skew(1.0), &angle(1.0), 15);
-            draw_branch(&mut pb, pos, branch_dir(-1.0) * 1.5, &skew(-1.0), &angle(-1.0), 15);
-
-            pb.move_to(pos.x, pos.y);
-            pos = pos + growth;
-            pb.line_to(pos.x, pos.y);
+        // Draw left and right branches
+        let dir = |sign| Rot2::new(sign * TAU / (4.0 - scale)) * growth * scale;
+        let skew = |sign| Rot2::new(sign * TAU / 100.0);
+        let angle = |sign| Rot2::new(sign * TAU / (3.0 + scale * 10.0));
+        if scale > 0.15 {  // Do not draw branches to the top of the tree
+            draw_branch(&mut pm, pos, dir( 1.0) * 1.5, &skew( 1.0), &angle( 1.0), 15);
+            draw_branch(&mut pm, pos, dir(-1.0) * 1.5, &skew(-1.0), &angle(-1.0), 15);
         }
-        pb.finish().unwrap()
-    };
-
-    let mut stroke = Stroke::default();
-    stroke.width = 3.0;
-    stroke.line_cap = LineCap::Round;
-
-    let mut pixmap = Pixmap::new(1400, 1400).unwrap();
-    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-    pixmap.save_png("tree.png").unwrap();
+        growth = skew(1.0-scale) * growth;
+        paint_path(pb, &mut pm, 0.5 + scale/2.0, 4.0 + scale*30.0);
+    }
+    pm.save_png("tree.png").unwrap();
 }
